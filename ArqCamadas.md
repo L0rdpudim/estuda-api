@@ -138,9 +138,3 @@ src/test/java/br/com/estuda/apoioestudos/
 ```
 
 Testes de service devem verificar regras de negócio. Testes de controller devem verificar o comportamento HTTP. Testes de integração devem ser adicionados quando houver endpoints e persistência implementados.
-
-## 7. Limites desta etapa
-
-Nesta etapa não serão implementados cadastro de usuários, autenticação, banco de dados, endpoints de negócio nem integração com a interface web. O objetivo é estabelecer a organização e as convenções para que essas funcionalidades possam ser desenvolvidas depois, sem antecipar decisões ainda pendentes.
-
-No ZIP analisado, além da classe principal e do teste `contextLoads`, não existem classes funcionais de controller, service, repository, entity ou DTO. Portanto, ainda não há classes dessas camadas para mover ou separar. A estrutura documentada e os `package-info.java` deixam os pacotes preparados, mas a implementação real das camadas ocorrerá junto com cada funcionalidade.
