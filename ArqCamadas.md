@@ -2,7 +2,7 @@
 
 ## 1. Direção arquitetural recomendada
 
-Para a etapa **[P0] #002 — Organizar a estrutura do backend**, recomenda-se uma aplicação única (monólito modular), organizada primeiro por módulo funcional e, dentro de cada módulo, por responsabilidade.
+Na etapa **[P0] #002 — Organizar a estrutura do backend**, foi realizada a aplicação única (monólito modular), organizada primeiro por módulo funcional e, dentro de cada módulo, por responsabilidade.
 
 Essa abordagem mantém próximas as classes que implementam uma mesma funcionalidade e separa os papéis de controller, service, repository, entity e DTO. É uma arquitetura em camadas tradicional do ecossistema Spring, suficiente para o estágio atual do Estuda e mais simples de manter do que introduzir desde já todas as divisões de Clean Architecture/Ports and Adapters.
 
