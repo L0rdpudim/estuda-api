@@ -1,140 +1,133 @@
-# Arquitetura e organização do backend — Estuda
+# Arquitetura do backend — Estuda
 
-## 1. Direção arquitetural recomendada
+## 1. Visão geral
 
-Na etapa **[P0] #002 — Organizar a estrutura do backend**, foi realizada a aplicação única (monólito modular), organizada primeiro por módulo funcional e, dentro de cada módulo, por responsabilidade.
+O Estuda utiliza uma aplicação única (monólito modular), organizada em camadas. A proposta é separar as funcionalidades por módulo e manter, dentro de cada módulo, as responsabilidades de controller, service, repository, entity e DTO.
 
-Essa abordagem mantém próximas as classes que implementam uma mesma funcionalidade e separa os papéis de controller, service, repository, entity e DTO. É uma arquitetura em camadas tradicional do ecossistema Spring, suficiente para o estágio atual do Estuda e mais simples de manter do que introduzir desde já todas as divisões de Clean Architecture/Ports and Adapters.
+Essa organização evita complexidade desnecessária neste estágio e permite ampliar o backend conforme as funcionalidades forem implementadas.
 
-A adoção definitiva dessa direção deve ser validada pelos três integrantes da equipe. A alternativa com `presentation`, `application`, `domain` e `infrastructure` pode ser reavaliada se a complexidade do sistema justificar essa separação no futuro. Não se recomenda misturar as duas convenções no mesmo módulo.
+## 2. Estrutura atual
 
-## 2. Estrutura de pacotes
+A raiz dos pacotes Java é `br.com.estuda.apoioestudos`. A classe `ApoioEstudosApiApplication` fica diretamente nessa raiz para permitir que o Spring Boot encontre os componentes dos subpacotes.
 
-A raiz dos pacotes Java é `br.com.estuda.apoioestudos`. A classe `ApoioEstudosApiApplication` permanece diretamente nessa raiz para que o Spring Boot encontre os componentes localizados nos subpacotes por meio do component scan padrão.
+No código analisado, a estrutura implementada ainda é inicial:
 
 ```text
-src/
-├── main/
-│   ├── java/br/com/estuda/apoioestudos/
-│   │   ├── ApoioEstudosApiApplication.java
-│   │   ├── atividade/
-│   │   ├── conteudo/
-│   │   ├── enem/
-│   │   ├── professor/
-│   │   ├── progresso/
-│   │   ├── usuario/
-│   │   │   ├── controller/
-│   │   │   ├── dto/
-│   │   │   ├── entity/
-│   │   │   ├── repository/
-│   │   │   └── service/
-│   │   ├── common/
-│   │   │   ├── exception/
-│   │   │   └── validation/
-│   │   └── config/
-│   └── resources/
-│       └── application.properties
-└── test/java/br/com/estuda/apoioestudos/
-    └── ApoioEstudosApiApplicationTests.java
+src/main/java/br/com/estuda/apoioestudos/
+├── ApoioEstudosApiApplication.java
+├── controllers/
+│   └── StatusController.java
+├── services/
+│   └── StatusService.java
+└── dtos/
+    └── StatusResponse.java
 ```
 
-Os módulos `atividade`, `conteudo`, `enem`, `professor` e `progresso` já representam áreas funcionais identificadas nos requisitos. Seus subpacotes internos devem ser criados à medida que suas primeiras classes forem implementadas; não é necessário criar pastas vazias em todos eles antecipadamente.
+O endpoint de status é a funcionalidade atualmente implementada. Os módulos de negócio e suas camadas devem ser criados conforme cada funcionalidade entrar em desenvolvimento.
 
-O módulo `usuario` serve como primeiro exemplo da divisão interna. Os arquivos `package-info.java` documentam e mantêm os pacotes no controle de versão, sem criar entidades, endpoints ou regras de negócio fictícias.
+## 3. Estrutura prevista
 
-## 3. Responsabilidades das partes
+A organização futura será por módulo funcional:
 
-### `controller` — entrada HTTP
+```text
+br/com/estuda/apoioestudos/
+├── ApoioEstudosApiApplication.java
+├── usuario/
+│   ├── controller/
+│   ├── dto/
+│   ├── entity/
+│   ├── repository/
+│   └── service/
+├── professor/
+├── conteudo/
+├── atividade/
+├── enem/
+├── progresso/
+├── common/
+│   └── exception/
+└── config/
+```
 
-Recebe as requisições da API, lê parâmetros e DTOs, aciona o serviço responsável e transforma o resultado em uma resposta HTTP.
+Os módulos `professor`, `conteudo`, `atividade`, `enem` e `progresso` deverão receber subpacotes conforme suas primeiras classes forem criadas. Não é necessário criar pacotes vazios antecipadamente.
 
-Não deve conter regras de negócio, fazer consultas diretamente ao banco de dados ou decidir permissões sem consultar a camada responsável.
+## 4. Responsabilidades das camadas
 
-### `service` — operações e regras de negócio
+| Camada | Responsabilidade |
+|---|---|
+| `controller` | Receber requisições HTTP e retornar respostas. |
+| `service` | Executar casos de uso e aplicar regras de negócio. |
+| `repository` | Consultar e persistir dados. |
+| `entity` | Representar os dados e objetos persistidos. |
+| `dto` | Definir os dados recebidos e enviados pela API. |
+| `config` | Reunir configurações técnicas e beans do Spring. |
+| `common` | Manter recursos realmente compartilhados, como exceções globais. |
 
-Implementa ou coordena os casos de uso do módulo. É onde devem ficar validações de negócio, verificações de existência, aplicação de regras e coordenação dos repositories necessários.
+Controllers não devem acessar repositories diretamente. Services coordenam as operações e regras de negócio. Repositories não devem conhecer HTTP nem DTOs da API. Entities não devem ser expostas diretamente como contratos da API.
 
-Um service não deve depender de controllers. Quando uma funcionalidade de outro módulo for necessária, deve-se preferir uma operação pública do service daquele módulo em vez de acessar diretamente seu repository.
-
-### `repository` — acesso a dados
-
-Centraliza as operações de consulta e persistência. As interfaces e tecnologias específicas serão definidas quando a equipe escolher o banco de dados e a estratégia de persistência.
-
-Como o snapshot atual ainda não possui banco de dados nem dependência de persistência, não se deve criar repository ou adicionar JPA apenas para preencher a estrutura.
-
-### `entity` — modelos e entidades
-
-Representa os dados e conceitos do domínio do módulo. Quando a estratégia de persistência for definida, as classes que precisarem ser persistidas poderão receber o mapeamento correspondente.
-
-Entidades não devem ser usadas automaticamente como contratos da API e não devem depender de DTOs ou controllers.
-
-### `dto` — contratos de entrada e saída
-
-Define os dados que a API recebe e devolve. DTOs limitam a exposição dos dados internos e permitem validar as entradas.
-
-Quando houver necessidade, os nomes devem indicar sua finalidade, por exemplo `CriarUsuarioRequest` e `UsuarioResponse`. Não se deve receber ou devolver a entidade diretamente por conveniência.
-
-### `config` — configuração técnica
-
-Agrupa configurações do Spring e criação de beans compartilhados. Não deve concentrar regras de negócio nem substituir os módulos funcionais.
-
-### `common` — recursos transversais
-
-Deve permanecer pequeno. É reservado a recursos genuinamente compartilhados, como tratamento global de exceções e validadores reutilizados por mais de um módulo. Uma regra exclusiva de `usuario`, por exemplo, deve permanecer dentro de `usuario`.
-
-## 4. Direção das chamadas
-
-O fluxo habitual de uma operação deve ser:
+## 5. Fluxo de uma requisição
 
 ```text
 Requisição HTTP
       ↓
- Controller
+  Controller
       ↓
    Service
       ↓
   Repository
       ↓
-  Persistência
+Banco de dados
 ```
 
-O controller também trabalha com DTOs de entrada e saída. O service aplica as regras e coordena o acesso aos dados. O repository não deve conhecer HTTP nem DTOs da API.
+O controller recebe ou devolve DTOs. O service aplica as regras de negócio e utiliza os repositories necessários. O repository é responsável pelo acesso aos dados.
 
-Regras práticas:
+Quando um módulo precisar de uma operação de outro módulo, deve preferir chamar um serviço público desse módulo, em vez de acessar diretamente seu repository.
 
-- Controller chama service; não chama repository diretamente.
-- Service concentra as regras de negócio e chama os repositories necessários.
-- Repository cuida de acesso a dados; não contém regras de fluxo da aplicação.
-- DTOs representam contratos da API; entities representam o modelo interno/persistido.
-- Um módulo não deve manipular diretamente o repository interno de outro módulo.
-- Classes compartilhadas só vão para `common` quando houver reutilização real.
+## 6. Persistência e banco de dados
 
-## 5. Convenções de nomenclatura
+O ambiente local utiliza **PostgreSQL**. O acesso aos dados é feito com **Spring Data JPA/Hibernate**, e o **Flyway** controla as alterações da estrutura do banco por migrations.
+
+- `application.properties`: configurações gerais e perfil padrão.
+- `application-local.properties`: conexão local com PostgreSQL.
+- `application-test.properties`: configuração do H2 em memória para testes.
+- `src/main/resources/db/migration/`: scripts SQL versionados pelo Flyway.
+
+No ambiente local, `spring.jpa.hibernate.ddl-auto=validate` faz o Hibernate validar o mapeamento, sem atualizar automaticamente as tabelas. As alterações estruturais devem ser registradas em migrations do Flyway.
+
+Nos testes, o H2 é utilizado em memória e configurado para recriar a estrutura. Ele não substitui o PostgreSQL do ambiente local.
+
+## 7. Convenções de nomenclatura
 
 | Elemento | Convenção | Exemplo |
 |---|---|---|
 | Pacotes | minúsculos, sem acentos | `usuario.controller` |
-| Classes e interfaces | `PascalCase` | `UsuarioService` |
+| Classes | `PascalCase` | `UsuarioService` |
 | Métodos e variáveis | `camelCase` | `buscarPorEmail` |
 | Constantes | `UPPER_SNAKE_CASE` | `LIMITE_TENTATIVAS` |
-| Controller | sufixo `Controller` | `UsuarioController` |
-| Service | sufixo `Service` | `UsuarioService` |
-| Repository | sufixo `Repository` | `UsuarioRepository` |
-| DTO | finalidade + `Request`/`Response` | `CriarUsuarioRequest` |
+| Controllers | sufixo `Controller` | `UsuarioController` |
+| Services | sufixo `Service` | `UsuarioService` |
+| Repositories | sufixo `Repository` | `UsuarioRepository` |
+| DTOs | finalidade + `Request`/`Response` | `CriarUsuarioRequest` |
 | Testes | nome da classe + `Test` | `UsuarioServiceTest` |
 
-Os nomes devem ficar em português, acompanhando o vocabulário funcional já utilizado no projeto. Não usar acentos ou espaços em nomes de pacotes, classes, métodos ou arquivos. Interfaces não precisam receber prefixo `I`.
+Os nomes devem seguir o vocabulário do projeto, em português. Não utilizar acentos ou espaços em nomes de pacotes, classes, métodos ou arquivos. Interfaces não precisam do prefixo `I`.
 
-## 6. Organização dos testes
+## 8. Organização dos testes
 
-Os testes devem acompanhar os módulos e as classes testadas dentro de `src/test/java`, mantendo a mesma raiz de pacotes da aplicação. Exemplos:
+Os testes ficam em `src/test/java`, mantendo a mesma raiz de pacotes da aplicação. Sempre que possível, devem acompanhar os módulos e as classes testadas.
 
-```text
-src/test/java/br/com/estuda/apoioestudos/
-├── ApoioEstudosApiApplicationTests.java
-└── usuario/
-    ├── service/UsuarioServiceTest.java
-    └── controller/UsuarioControllerTest.java
-```
+- Testes de service verificam regras de negócio.
+- Testes de controller verificam as respostas HTTP.
+- Testes de integração verificam a interação entre componentes e persistência.
 
-Testes de service devem verificar regras de negócio. Testes de controller devem verificar o comportamento HTTP. Testes de integração devem ser adicionados quando houver endpoints e persistência implementados.
+O teste de contexto verifica se a aplicação Spring consegue iniciar, mas não substitui os testes das funcionalidades.
+
+## 9. Diretrizes
+
+- Manter cada classe com uma responsabilidade clara.
+- Não colocar regras de negócio nos controllers.
+- Não expor entities diretamente nos endpoints.
+- Manter `common` restrito ao que for compartilhado.
+- Não acessar diretamente repositories internos de outros módulos.
+- Não versionar senhas, tokens ou credenciais.
+- Criar camadas e pacotes conforme as funcionalidades forem implementadas.
+- Relacionar testes às regras de negócio correspondentes sempre que possível.
