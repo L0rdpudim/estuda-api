@@ -12,9 +12,8 @@ A plataforma organiza conteúdos e atividades por etapa de ensino, ano escolar, 
 - **Spring Boot 4.1.2** — estrutura principal da aplicação.
 - **Spring Web MVC** — criação dos endpoints REST.
 - **Spring Data JPA / Hibernate** — integração e mapeamento de persistência.
-- **PostgreSQL** — banco de dados utilizado no ambiente local.
+- **PostgreSQL** — único SGBD utilizado pela aplicação e pelos testes automatizados.
 - **Flyway** — controle de versões e execução de alterações no banco (migrations).
-- **H2** — banco em memória utilizado nos testes automatizados.
 - **Maven Wrapper** — execução dos comandos Maven sem exigir uma instalação global do Maven.
 
 ## Pré-requisitos
@@ -30,7 +29,7 @@ O Maven não precisa ser instalado separadamente, pois o repositório possui Mav
 
 ## Como configurar o banco de dados
 
-A execução normal utiliza o perfil `local`, que conecta a aplicação a um banco PostgreSQL local. O nome esperado para o banco é `estuda`.
+A aplicação e os testes utilizam exclusivamente PostgreSQL, por meio do perfil `local`. O banco padrão é `estuda`.
 
 ### 1. Iniciar o PostgreSQL
 
@@ -106,6 +105,9 @@ Abra o terminal na pasta raiz do projeto, onde está localizado o arquivo `pom.x
 ### Linux ou macOS
 
 ```bash
+# Necessário apenas se o arquivo não tiver permissão de execução
+chmod +x mvnw
+
 # Iniciar a API
 ./mvnw spring-boot:run
 ```
@@ -139,7 +141,7 @@ Para iniciar novamente, execute o comando `spring-boot:run` indicado acima.
 
 ## Testes e build
 
-Os testes automatizados utilizam o banco H2 em memória, configurado no perfil `test`. Por isso, a execução dos testes não exige que o PostgreSQL esteja ligado.
+Os testes automatizados também utilizam PostgreSQL, com o mesmo perfil `local` e as mesmas variáveis de conexão da aplicação. Antes de executá-los, mantenha o serviço PostgreSQL ligado, o banco `estuda` criado e `DB_PASSWORD` configurada no terminal.
 
 **Windows — PowerShell:**
 
@@ -161,7 +163,7 @@ Os testes automatizados utilizam o banco H2 em memória, configurado no perfil `
 ./mvnw clean package
 ```
 
-O H2 é utilizado somente durante os testes; seus dados em memória não são os dados persistidos no PostgreSQL.
+O teste `DatabaseConnectionTest` verifica se a conexão está ativa e confirma que o SGBD conectado é PostgreSQL. Não há banco alternativo ou banco em memória no projeto.
 
 ## Como o backend está organizado
 

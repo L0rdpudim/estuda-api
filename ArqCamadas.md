@@ -84,16 +84,13 @@ Quando um módulo precisar de uma operação de outro módulo, deve preferir cha
 
 ## 6. Persistência e banco de dados
 
-O ambiente local utiliza **PostgreSQL**. O acesso aos dados é feito com **Spring Data JPA/Hibernate**, e o **Flyway** controla as alterações da estrutura do banco por migrations.
+O projeto utiliza **exclusivamente PostgreSQL**, tanto na execução da aplicação quanto nos testes automatizados. O acesso é feito com **Spring Data JPA/Hibernate**, e o **Flyway** controla as alterações estruturais por migrations.
 
-- `application.properties`: configurações gerais e perfil padrão.
-- `application-local.properties`: conexão local com PostgreSQL.
-- `application-test.properties`: configuração do H2 em memória para testes.
+- `application.properties`: configurações gerais e perfil padrão `local`.
+- `application-local.properties`: conexão com PostgreSQL e configurações de JPA/Flyway.
 - `src/main/resources/db/migration/`: scripts SQL versionados pelo Flyway.
 
-No ambiente local, `spring.jpa.hibernate.ddl-auto=validate` faz o Hibernate validar o mapeamento, sem atualizar automaticamente as tabelas. As alterações estruturais devem ser registradas em migrations do Flyway.
-
-Nos testes, o H2 é utilizado em memória e configurado para recriar a estrutura. Ele não substitui o PostgreSQL do ambiente local.
+O Hibernate utiliza `spring.jpa.hibernate.ddl-auto=validate`: valida o mapeamento sem criar ou atualizar tabelas. Toda alteração estrutural deve ser registrada em uma nova migration Flyway. Não utilizar bancos em memória ou outro SGBD nos testes; as classes de teste ativam o perfil `local` e exigem o PostgreSQL disponível.
 
 ## 7. Convenções de nomenclatura
 
@@ -117,9 +114,9 @@ Os testes ficam em `src/test/java`, mantendo a mesma raiz de pacotes da aplicaç
 
 - Testes de service verificam regras de negócio.
 - Testes de controller verificam as respostas HTTP.
-- Testes de integração verificam a interação entre componentes e persistência.
+- Testes de integração verificam a interação entre componentes e persistência no PostgreSQL.
 
-O teste de contexto verifica se a aplicação Spring consegue iniciar, mas não substitui os testes das funcionalidades.
+Os testes exigem o PostgreSQL ligado e as mesmas variáveis de conexão usadas pela aplicação. O teste de contexto verifica a inicialização do Spring, mas não substitui os testes das regras de negócio.
 
 ## 9. Diretrizes
 
