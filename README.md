@@ -4,7 +4,7 @@ O **Estuda** é uma plataforma web de apoio ao ensino e à aprendizagem. Este re
 
 A plataforma organiza conteúdos e atividades por etapa de ensino, ano escolar, disciplina e aula. O estudante poderá estudar os materiais, responder questões, acompanhar seu desempenho e acessar atividades de preparação para o ENEM. Professores com perfil validado poderão contribuir com conteúdos, sujeitos à revisão da equipe responsável.
 
-> **Estado do projeto:** o backend está em desenvolvimento. As regras de negócio documentam o comportamento esperado da plataforma, mas nem todas as funcionalidades já estão implementadas. Atualmente, a API disponibiliza um endpoint básico de status e a configuração inicial de conexão com o banco de dados.
+> **Estado do projeto:** o backend está em desenvolvimento. A API disponibiliza um endpoint básico de status e já possui a estrutura de persistência para contas de estudantes e professores. O cadastro via API, autenticação e demais funcionalidades ainda não estão implementados.
 
 ## Tecnologias
 
@@ -29,7 +29,7 @@ O Maven não precisa ser instalado separadamente, pois o repositório possui Mav
 
 ## Como configurar o banco de dados
 
-A aplicação e os testes utilizam exclusivamente PostgreSQL, por meio do perfil `local`. O banco padrão é `estuda`.
+A aplicação e os testes utilizam exclusivamente PostgreSQL. A aplicação usa o perfil `local`; os testes usam o perfil `test`. Ambos usam as mesmas variáveis de conexão e, por padrão, o banco `estuda`.
 
 ### 1. Iniciar o PostgreSQL
 
@@ -60,7 +60,7 @@ Também é possível executar o comando abaixo pelo Query Tool do pgAdmin ou pel
 CREATE DATABASE estuda;
 ```
 
-**Não é necessário criar tabelas manualmente.** Ao iniciar a aplicação, o Flyway executa as migrations localizadas em `src/main/resources/db/migration`. A migration inicial cria a tabela `tb_teste_conexao`, usada para validar o controle de versão do banco. O Hibernate está configurado para validar o mapeamento, não para atualizar a estrutura automaticamente.
+**Não é necessário criar tabelas manualmente.** Ao iniciar a aplicação, o Flyway executa as migrations localizadas em `src/main/resources/db/migration`. A migration `V1` cria a tabela `tb_teste_conexao`; a `V2` cria as tabelas `tb_usuario` e `tb_perfil_usuario`, além da restrição de unicidade de email sem diferenciar maiúsculas de minúsculas. O Hibernate está configurado para validar o mapeamento, não para atualizar a estrutura automaticamente.
 
 ### 3. Configurar a senha do PostgreSQL
 
@@ -141,7 +141,7 @@ Para iniciar novamente, execute o comando `spring-boot:run` indicado acima.
 
 ## Testes e build
 
-Os testes automatizados também utilizam PostgreSQL, com o mesmo perfil `local` e as mesmas variáveis de conexão da aplicação. Antes de executá-los, mantenha o serviço PostgreSQL ligado, o banco `estuda` criado e `DB_PASSWORD` configurada no terminal.
+Os testes automatizados utilizam PostgreSQL com o perfil `test`. Antes de executá-los, mantenha o serviço PostgreSQL ligado, o banco `estuda` criado e `DB_PASSWORD` configurada no terminal.
 
 **Windows — PowerShell:**
 
@@ -167,13 +167,13 @@ O teste `DatabaseConnectionTest` verifica se a conexão está ativa e confirma q
 
 ## Como o backend está organizado
 
-O backend está sendo organizado em camadas, separando as responsabilidades do código. Atualmente, o endpoint de status está dividido entre os pacotes `controllers`, `services` e `dtos`. Conforme os módulos de negócio e a persistência forem implementados, a estrutura será ampliada com repositories, entities, configurações e tratamento de exceções.
+O backend está sendo organizado em módulos e camadas. O endpoint de status está dividido entre os pacotes `controllers`, `services` e `dtos`. O módulo `usuario` já contém as entidades `Usuario` e `PerfilUsuario`, os enums de tipo e validação de perfil e o `UsuarioRepository`. A estrutura de persistência é versionada pelo Flyway; os endpoints de cadastro e as camadas de service/controller do módulo ainda serão implementados.
 
 O fluxo previsto para operações que acessam dados é: **requisição HTTP → Controller → Service → Repository → banco de dados**. A organização detalhada dos pacotes, as responsabilidades e as convenções de desenvolvimento estão descritas em [`ArqCamadas.md`](ArqCamadas.md).
 
 ## Regras de negócio
 
-As regras abaixo representam o comportamento definido para a plataforma. Elas devem orientar a implementação do backend e dos testes. A presença de uma regra nesta documentação não significa que a funcionalidade já esteja disponível.
+As regras abaixo representam o comportamento definido para a plataforma. Elas devem orientar a implementação do backend e dos testes. O modelo e a persistência de contas/perfis das regras RN-001, RN-002 e RN-004 estão implementados; as operações de cadastro, autenticação e liberação de permissões ainda não estão disponíveis na API.
 
 ### Usuários, perfis e permissões
 

@@ -10,20 +10,28 @@ Essa organização evita complexidade desnecessária neste estágio e permite am
 
 A raiz dos pacotes Java é `br.com.estuda.apoioestudos`. A classe `ApoioEstudosApiApplication` fica diretamente nessa raiz para permitir que o Spring Boot encontre os componentes dos subpacotes.
 
-No código analisado, a estrutura implementada ainda é inicial:
+Estrutura implementada:
 
 ```text
 src/main/java/br/com/estuda/apoioestudos/
 ├── ApoioEstudosApiApplication.java
 ├── controllers/
 │   └── StatusController.java
+├── dtos/
+│   └── StatusResponse.java
 ├── services/
 │   └── StatusService.java
-└── dtos/
-    └── StatusResponse.java
+└── usuario/
+    ├── entity/
+    │   ├── PerfilUsuario.java
+    │   ├── StatusValidacaoProfessor.java
+    │   ├── TipoPerfil.java
+    │   └── Usuario.java
+    └── repository/
+        └── UsuarioRepository.java
 ```
 
-O endpoint de status é a funcionalidade atualmente implementada. Os módulos de negócio e suas camadas devem ser criados conforme cada funcionalidade entrar em desenvolvimento.
+O endpoint de status é a funcionalidade HTTP atualmente implementada. O módulo `usuario` já define o modelo de domínio e a persistência de contas e perfis, mas ainda não possui endpoints nem services de cadastro/autenticação.
 
 ## 3. Estrutura prevista
 
@@ -49,6 +57,8 @@ br/com/estuda/apoioestudos/
 ```
 
 Os módulos `professor`, `conteudo`, `atividade`, `enem` e `progresso` deverão receber subpacotes conforme suas primeiras classes forem criadas. Não é necessário criar pacotes vazios antecipadamente.
+
+No módulo `usuario`, cada `Usuario` possui um `PerfilUsuario` associado um-para-um. O perfil distingue `ESTUDANTE` e `PROFESSOR`; estudantes não possuem status de validação docente e professores iniciam com status `PENDENTE`. A estrutura física correspondente é criada pela migration `V2__usuarios.sql`.
 
 ## 4. Responsabilidades das camadas
 
@@ -88,9 +98,12 @@ O projeto utiliza **exclusivamente PostgreSQL**, tanto na execução da aplicaç
 
 - `application.properties`: configurações gerais e perfil padrão `local`.
 - `application-local.properties`: conexão com PostgreSQL e configurações de JPA/Flyway.
+- `application-test.properties`: conexão de teste com PostgreSQL e configurações de JPA/Flyway.
 - `src/main/resources/db/migration/`: scripts SQL versionados pelo Flyway.
 
-O Hibernate utiliza `spring.jpa.hibernate.ddl-auto=validate`: valida o mapeamento sem criar ou atualizar tabelas. Toda alteração estrutural deve ser registrada em uma nova migration Flyway. Não utilizar bancos em memória ou outro SGBD nos testes; as classes de teste ativam o perfil `local` e exigem o PostgreSQL disponível.
+A migration `V1` cria a tabela usada no teste inicial de conexão. A migration `V2` cria `tb_usuario` e `tb_perfil_usuario`, com validações para os tipos de perfil e estados de validação docente. O email possui unicidade sem distinção entre maiúsculas e minúsculas.
+
+O Hibernate utiliza `spring.jpa.hibernate.ddl-auto=validate`: valida o mapeamento sem criar ou atualizar tabelas. Toda alteração estrutural deve ser registrada em uma nova migration Flyway. Não utilizar bancos em memória ou outro SGBD nos testes; as classes de teste ativam o perfil `test` e exigem o PostgreSQL disponível.
 
 ## 7. Convenções de nomenclatura
 

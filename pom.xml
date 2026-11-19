@@ -71,7 +71,11 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Migrations de Banco de Dados com Flyway -->
+        <!-- Integração do Flyway com o Spring Boot e migrations do banco -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
