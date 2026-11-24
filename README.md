@@ -4,13 +4,15 @@ O **Estuda** é uma plataforma web de apoio ao ensino e à aprendizagem. Este re
 
 A plataforma organiza conteúdos e atividades por etapa de ensino, ano escolar, disciplina e aula. O estudante poderá estudar os materiais, responder questões, acompanhar seu desempenho e acessar atividades de preparação para o ENEM. Professores com perfil validado poderão contribuir com conteúdos, sujeitos à revisão da equipe responsável.
 
-> **Estado do projeto:** o backend está em desenvolvimento. A API disponibiliza um endpoint básico de status e já possui a estrutura de persistência para contas de estudantes e professores. O cadastro via API, autenticação e demais funcionalidades ainda não estão implementados.
+> **Estado do projeto:** o backend está em desenvolvimento. A API possui cadastro e autenticação por token Bearer, persistência de contas/perfis e autorização baseada no perfil. As demais funcionalidades de ensino ainda serão implementadas.
 
 ## Tecnologias
 
 - **Java 21** — linguagem de programação.
 - **Spring Boot 4.1.2** — estrutura principal da aplicação.
 - **Spring Web MVC** — criação dos endpoints REST.
+- **Spring Security** — autenticação stateless e autorização.
+- **JJWT** — assinatura e validação de tokens JWT.
 - **Spring Data JPA / Hibernate** — integração e mapeamento de persistência.
 - **PostgreSQL** — único SGBD utilizado pela aplicação e pelos testes automatizados.
 - **Flyway** — controle de versões e execução de alterações no banco (migrations).
@@ -91,6 +93,26 @@ $env:DB_URL = "jdbc:postgresql://localhost:5432/estuda"
 
 A variável `DB_PASSWORD` precisa ser definida novamente quando um novo terminal do PowerShell for aberto, a menos que tenha sido configurada permanentemente no sistema.
 
+### Configurar a chave dos tokens
+
+A aplicação assina os tokens JWT com a variável de ambiente `JWT_SECRET`. Configure uma chave aleatória com pelo menos 32 caracteres/bytes antes de iniciar a API. Não reutilize a chave de testes nem publique essa chave no repositório.
+
+**Windows — PowerShell:**
+
+```powershell
+$bytes = New-Object byte[] 48
+[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$env:JWT_SECRET = [Convert]::ToBase64String($bytes)
+```
+
+**Linux ou macOS — terminal:**
+
+```bash
+export JWT_SECRET="$(openssl rand -base64 48)"
+```
+
+Os tokens expiram após uma hora. Para alterar esse período, configure `app.jwt.expiration` com uma duração ISO-8601, por exemplo `PT30M`.
+
 ## Como executar a aplicação
 
 Abra o terminal na pasta raiz do projeto, onde está localizado o arquivo `pom.xml`.
@@ -133,6 +155,47 @@ Resposta esperada:
 
 O endereço `http://localhost:8080/` pode retornar erro 404 porque não existe uma rota configurada para a raiz `/`. Para verificar a API, utilize o endpoint `/api/v1/status`.
 
+## Cadastro, autenticação e permissões
+
+Todas as rotas abaixo usam JSON. O cadastro retorna `201 Created` e já fornece um token Bearer; o login retorna `200 OK`. Os perfis aceitos são `ESTUDANTE` e `PROFESSOR`.
+
+### Cadastrar estudante
+
+```http
+POST /api/v1/auth/cadastro
+Content-Type: application/json
+
+{
+  "nome": "Ana Estudante",
+  "email": "ana@example.com",
+  "senha": "senha-segura-123",
+  "tipoPerfil": "ESTUDANTE"
+}
+```
+
+Para cadastrar um professor, envie `"tipoPerfil": "PROFESSOR"`. Professores iniciam com status `PENDENTE`; durante esse período recebem somente a permissão `ROLE_ESTUDANTE`, podendo usar a área de estudante, mas não funcionalidades protegidas com `ROLE_PROFESSOR`. A permissão de professor é concedida somente após a validação do perfil. O status é incluído no token no momento do login/cadastro, então o usuário deverá autenticar novamente para obter permissões atualizadas após uma validação.
+
+### Autenticar
+
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "ana@example.com",
+  "senha": "senha-segura-123"
+}
+```
+
+A resposta contém `token`, `tipoToken` (`Bearer`) e `expiraEmSegundos`. Envie o token nas rotas autenticadas:
+
+```http
+GET /api/v1/auth/me
+Authorization: Bearer <token>
+```
+
+`/api/v1/auth/me` retorna a identidade e as permissões efetivas do usuário autenticado. O endpoint `/api/v1/status`, cadastro e login são públicos; as demais rotas exigem autenticação. Rotas sob `/api/v1/professores/**` exigem perfil de professor validado; rotas sob `/api/v1/estudantes/**` exigem permissão de estudante. Para autorização por método, utilize também `@PreAuthorize("hasRole('PROFESSOR')")` ou `@PreAuthorize("hasRole('ESTUDANTE')")`. Senhas são armazenadas com BCrypt e nunca retornadas pela API. E-mails duplicados retornam `409 Conflict`, credenciais incorretas `401 Unauthorized` e dados inválidos `400 Bad Request`.
+
 ### Encerrar a aplicação
 
 No terminal em que o Spring Boot está sendo executado, pressione **Ctrl + C**. Isso encerra a aplicação, mas não desliga o servidor PostgreSQL. Os dados armazenados no PostgreSQL permanecem salvos.
@@ -173,7 +236,7 @@ O fluxo previsto para operações que acessam dados é: **requisição HTTP → 
 
 ## Regras de negócio
 
-As regras abaixo representam o comportamento definido para a plataforma. Elas devem orientar a implementação do backend e dos testes. O modelo e a persistência de contas/perfis das regras RN-001, RN-002 e RN-004 estão implementados; as operações de cadastro, autenticação e liberação de permissões ainda não estão disponíveis na API.
+As regras abaixo representam o comportamento definido para a plataforma. Elas devem orientar a implementação do backend e dos testes. O modelo, a persistência e as operações de cadastro/autenticação das regras RN-001, RN-002 e RN-004 estão implementados. A validação administrativa de professores e as funcionalidades das demais regras ainda serão implementadas.
 
 ### Usuários, perfis e permissões
 

@@ -15,6 +15,11 @@ Estrutura implementada:
 ```text
 src/main/java/br/com/estuda/apoioestudos/
 ├── ApoioEstudosApiApplication.java
+├── common/
+│   └── ApiExceptionHandler.java
+├── config/
+│   ├── JwtAuthenticationFilter.java
+│   └── SecurityConfig.java
 ├── controllers/
 │   └── StatusController.java
 ├── dtos/
@@ -22,16 +27,29 @@ src/main/java/br/com/estuda/apoioestudos/
 ├── services/
 │   └── StatusService.java
 └── usuario/
+    ├── controller/
+    │   └── UsuarioController.java
+    ├── dto/
+    │   ├── AutenticacaoResponse.java
+    │   ├── CadastroUsuarioRequest.java
+    │   ├── LoginRequest.java
+    │   └── UsuarioAutenticadoResponse.java
     ├── entity/
     │   ├── PerfilUsuario.java
     │   ├── StatusValidacaoProfessor.java
     │   ├── TipoPerfil.java
     │   └── Usuario.java
-    └── repository/
-        └── UsuarioRepository.java
+    ├── repository/
+    │   └── UsuarioRepository.java
+    └── service/
+        ├── CredenciaisInvalidasException.java
+        ├── EmailJaCadastradoException.java
+        ├── JwtService.java
+        ├── UsuarioAutenticado.java
+        └── UsuarioService.java
 ```
 
-O endpoint de status é a funcionalidade HTTP atualmente implementada. O módulo `usuario` já define o modelo de domínio e a persistência de contas e perfis, mas ainda não possui endpoints nem services de cadastro/autenticação.
+Os endpoints de status e cadastro/autenticação estão implementados. O módulo `usuario` mantém o domínio, DTOs, service e persistência de contas/perfis. A camada `config` valida tokens JWT Bearer, torna a API stateless e associa permissões efetivas ao usuário autenticado.
 
 ## 3. Estrutura prevista
 
@@ -52,7 +70,7 @@ br/com/estuda/apoioestudos/
 ├── enem/
 ├── progresso/
 ├── common/
-│   └── exception/
+│   └── ApiExceptionHandler.java
 └── config/
 ```
 
@@ -92,6 +110,8 @@ O controller recebe ou devolve DTOs. O service aplica as regras de negócio e ut
 
 Quando um módulo precisar de uma operação de outro módulo, deve preferir chamar um serviço público desse módulo, em vez de acessar diretamente seu repository.
 
+O filtro JWT em `config` valida o token Bearer e define o principal/permissões no contexto do Spring Security antes do controller. O `UsuarioService` cria contas, verifica credenciais e emite tokens; o `ApiExceptionHandler` converte erros esperados para respostas HTTP. Rotas sob `/api/v1/professores/**` exigem `ROLE_PROFESSOR` e rotas sob `/api/v1/estudantes/**` exigem `ROLE_ESTUDANTE`; endpoints docentes também podem restringir métodos com `@PreAuthorize`. Todo usuário recebe `ROLE_ESTUDANTE`, enquanto professores só recebem a permissão docente após validação.
+
 ## 6. Persistência e banco de dados
 
 O projeto utiliza **exclusivamente PostgreSQL**, tanto na execução da aplicação quanto nos testes automatizados. O acesso é feito com **Spring Data JPA/Hibernate**, e o **Flyway** controla as alterações estruturais por migrations.
@@ -102,6 +122,8 @@ O projeto utiliza **exclusivamente PostgreSQL**, tanto na execução da aplicaç
 - `src/main/resources/db/migration/`: scripts SQL versionados pelo Flyway.
 
 A migration `V1` cria a tabela usada no teste inicial de conexão. A migration `V2` cria `tb_usuario` e `tb_perfil_usuario`, com validações para os tipos de perfil e estados de validação docente. O email possui unicidade sem distinção entre maiúsculas e minúsculas.
+
+Senhas são persistidas com BCrypt. Tokens JWT são assinados usando segredo `JWT_SECRET` fornecido pelo ambiente e expiram após uma hora por padrão; não se deve versionar o segredo.
 
 O Hibernate utiliza `spring.jpa.hibernate.ddl-auto=validate`: valida o mapeamento sem criar ou atualizar tabelas. Toda alteração estrutural deve ser registrada em uma nova migration Flyway. Não utilizar bancos em memória ou outro SGBD nos testes; as classes de teste ativam o perfil `test` e exigem o PostgreSQL disponível.
 
