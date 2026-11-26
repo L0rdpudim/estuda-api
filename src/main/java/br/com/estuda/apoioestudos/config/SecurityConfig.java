@@ -12,6 +12,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import br.com.estuda.apoioestudos.usuario.service.JwtService;
+
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
@@ -19,7 +21,7 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(
         HttpSecurity http,
-        JwtAuthenticationFilter jwtAuthenticationFilter
+        JwtService jwtService
     ) throws Exception {
         return http
             .csrf(csrf -> csrf.disable())
@@ -39,7 +41,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/estudantes/**").hasRole("ESTUDANTE")
                 .anyRequest().authenticated())
             .addFilterBefore(
-                jwtAuthenticationFilter,
+                    new JwtAuthenticationFilter(jwtService),
                 UsernamePasswordAuthenticationFilter.class
             )
             .build();

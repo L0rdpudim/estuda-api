@@ -1,13 +1,11 @@
 package br.com.estuda.apoioestudos.config;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import br.com.estuda.apoioestudos.usuario.entity.StatusValidacaoProfessor;
@@ -21,8 +19,15 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-@Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final List<SimpleGrantedAuthority> PERMISSOES_ESTUDANTE =
+        List.of(new SimpleGrantedAuthority("ROLE_ESTUDANTE"));
+    private static final List<SimpleGrantedAuthority> PERMISSOES_PROFESSOR =
+        List.of(
+            new SimpleGrantedAuthority("ROLE_ESTUDANTE"),
+            new SimpleGrantedAuthority("ROLE_PROFESSOR")
+        );
 
     private final JwtService jwtService;
 
@@ -56,12 +61,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 status
             );
 
-            List<SimpleGrantedAuthority> permissoes = new ArrayList<>();
-            permissoes.add(new SimpleGrantedAuthority("ROLE_ESTUDANTE"));
-            if (perfil == TipoPerfil.PROFESSOR
-                && status == StatusValidacaoProfessor.VALIDADO) {
-                permissoes.add(new SimpleGrantedAuthority("ROLE_PROFESSOR"));
-            }
+            List<SimpleGrantedAuthority> permissoes =
+                perfil == TipoPerfil.PROFESSOR
+                    && status == StatusValidacaoProfessor.VALIDADO
+                    ? PERMISSOES_PROFESSOR
+                    : PERMISSOES_ESTUDANTE;
 
             var authentication = new UsernamePasswordAuthenticationToken(
                 principal,

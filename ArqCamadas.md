@@ -26,6 +26,17 @@ src/main/java/br/com/estuda/apoioestudos/
 │   └── StatusResponse.java
 ├── services/
 │   └── StatusService.java
+├── conteudo/
+│   ├── entity/
+│   │   ├── AnoEscolar.java
+│   │   ├── Aula.java
+│   │   ├── Disciplina.java
+│   │   ├── EntidadeCatalogo.java
+│   │   ├── EtapaEnsino.java
+│   │   ├── MaterialDidatico.java
+│   │   └── TipoMaterialDidatico.java
+│   └── repository/
+│       └── EtapaEnsinoRepository.java
 └── usuario/
     ├── controller/
     │   └── UsuarioController.java
@@ -49,7 +60,7 @@ src/main/java/br/com/estuda/apoioestudos/
         └── UsuarioService.java
 ```
 
-Os endpoints de status e cadastro/autenticação estão implementados. O módulo `usuario` mantém o domínio, DTOs, service e persistência de contas/perfis. A camada `config` valida tokens JWT Bearer, torna a API stateless e associa permissões efetivas ao usuário autenticado.
+Os endpoints de status e cadastro/autenticação estão implementados. O módulo `usuario` mantém o domínio, DTOs, service e persistência de contas/perfis. O módulo `conteudo` modela o catálogo pela hierarquia `EtapaEnsino → AnoEscolar → Disciplina → Aula`; aulas podem conter materiais textuais, vídeos e referências, ordenados para exibição. O catálogo ainda não possui endpoints HTTP. A camada `config` valida tokens JWT Bearer, torna a API stateless e associa permissões efetivas ao usuário autenticado.
 
 ## 3. Estrutura prevista
 
@@ -64,8 +75,10 @@ br/com/estuda/apoioestudos/
 │   ├── entity/
 │   ├── repository/
 │   └── service/
-├── professor/
 ├── conteudo/
+│   ├── entity/
+│   └── repository/
+├── professor/
 ├── atividade/
 ├── enem/
 ├── progresso/
@@ -77,6 +90,10 @@ br/com/estuda/apoioestudos/
 Os módulos `professor`, `conteudo`, `atividade`, `enem` e `progresso` deverão receber subpacotes conforme suas primeiras classes forem criadas. Não é necessário criar pacotes vazios antecipadamente.
 
 No módulo `usuario`, cada `Usuario` possui um `PerfilUsuario` associado um-para-um. O perfil distingue `ESTUDANTE` e `PROFESSOR`; estudantes não possuem status de validação docente e professores iniciam com status `PENDENTE`. A estrutura física correspondente é criada pela migration `V2__usuarios.sql`.
+
+No módulo `conteudo`, o catálogo segue uma hierarquia estrita de um-para-muitos: etapa contém anos escolares, ano contém disciplinas, disciplina contém aulas e aula contém materiais. A disciplina fica vinculada ao ano escolar para refletir a organização curricular; seus nomes podem se repetir em anos diferentes. `MaterialDidatico` diferencia `TEXTO`, `VIDEO` e `REFERENCIA`, armazenando conteúdo textual e/ou URL conforme o tipo.
+
+As entidades do catálogo compartilham o mapeamento do identificador em `EntidadeCatalogo`; cada entidade mantém seus próprios atributos e relações.
 
 ## 4. Responsabilidades das camadas
 
@@ -124,6 +141,8 @@ O projeto utiliza **exclusivamente PostgreSQL**, tanto na execução da aplicaç
 A migration `V1` cria a tabela usada no teste inicial de conexão. A migration `V2` cria `tb_usuario` e `tb_perfil_usuario`, com validações para os tipos de perfil e estados de validação docente. O email possui unicidade sem distinção entre maiúsculas e minúsculas.
 
 Senhas são persistidas com BCrypt. Tokens JWT são assinados usando segredo `JWT_SECRET` fornecido pelo ambiente e expiram após uma hora por padrão; não se deve versionar o segredo.
+
+A migration `V3` cria o catálogo educacional e materiais didáticos, com chaves estrangeiras em cascata, ordenação positiva e restrições contra nomes/ordens duplicados no mesmo nível da hierarquia.
 
 O Hibernate utiliza `spring.jpa.hibernate.ddl-auto=validate`: valida o mapeamento sem criar ou atualizar tabelas. Toda alteração estrutural deve ser registrada em uma nova migration Flyway. Não utilizar bancos em memória ou outro SGBD nos testes; as classes de teste ativam o perfil `test` e exigem o PostgreSQL disponível.
 

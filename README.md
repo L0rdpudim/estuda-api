@@ -62,7 +62,7 @@ Também é possível executar o comando abaixo pelo Query Tool do pgAdmin ou pel
 CREATE DATABASE estuda;
 ```
 
-**Não é necessário criar tabelas manualmente.** Ao iniciar a aplicação, o Flyway executa as migrations localizadas em `src/main/resources/db/migration`. A migration `V1` cria a tabela `tb_teste_conexao`; a `V2` cria as tabelas `tb_usuario` e `tb_perfil_usuario`, além da restrição de unicidade de email sem diferenciar maiúsculas de minúsculas. O Hibernate está configurado para validar o mapeamento, não para atualizar a estrutura automaticamente.
+**Não é necessário criar tabelas manualmente.** Ao iniciar a aplicação, o Flyway executa as migrations localizadas em `src/main/resources/db/migration`. A migration `V1` cria a tabela `tb_teste_conexao`; a `V2` cria `tb_usuario` e `tb_perfil_usuario`; e a `V3` cria o catálogo (`tb_etapa_ensino`, `tb_ano_escolar`, `tb_disciplina`, `tb_aula` e `tb_material_didatico`). O Hibernate está configurado para validar o mapeamento, não para atualizar a estrutura automaticamente.
 
 ### 3. Configurar a senha do PostgreSQL
 
@@ -230,13 +230,13 @@ O teste `DatabaseConnectionTest` verifica se a conexão está ativa e confirma q
 
 ## Como o backend está organizado
 
-O backend está sendo organizado em módulos e camadas. O endpoint de status está dividido entre os pacotes `controllers`, `services` e `dtos`. O módulo `usuario` já contém as entidades `Usuario` e `PerfilUsuario`, os enums de tipo e validação de perfil e o `UsuarioRepository`. A estrutura de persistência é versionada pelo Flyway; os endpoints de cadastro e as camadas de service/controller do módulo ainda serão implementados.
+O backend está sendo organizado em módulos e camadas. O endpoint de status está dividido entre os pacotes `controllers`, `services` e `dtos`. O módulo `usuario` contém cadastro/autenticação, entidades, repositório, services e DTOs. O módulo `conteudo` contém o modelo de domínio e persistência do catálogo educacional: etapa de ensino → ano escolar → disciplina → aula → materiais didáticos. Nesta etapa, o catálogo ainda não possui endpoints HTTP de gerenciamento.
 
 O fluxo previsto para operações que acessam dados é: **requisição HTTP → Controller → Service → Repository → banco de dados**. A organização detalhada dos pacotes, as responsabilidades e as convenções de desenvolvimento estão descritas em [`ArqCamadas.md`](ArqCamadas.md).
 
 ## Regras de negócio
 
-As regras abaixo representam o comportamento definido para a plataforma. Elas devem orientar a implementação do backend e dos testes. O modelo, a persistência e as operações de cadastro/autenticação das regras RN-001, RN-002 e RN-004 estão implementados. A validação administrativa de professores e as funcionalidades das demais regras ainda serão implementadas.
+As regras abaixo representam o comportamento definido para a plataforma. Elas devem orientar a implementação do backend e dos testes. O modelo, a persistência e as operações de cadastro/autenticação das regras RN-001, RN-002 e RN-004 estão implementados. A estrutura hierárquica de catálogo da RN-005 também está implementada; a validação administrativa de professores, publicação e gerenciamento de conteúdos e as funcionalidades das demais regras ainda serão implementadas.
 
 ### Usuários, perfis e permissões
 
@@ -247,7 +247,7 @@ As regras abaixo representam o comportamento definido para a plataforma. Elas de
 
 ### Conteúdos didáticos e contribuição dos professores
 
-- **RN-005 — Hierarquia dos conteúdos:** os conteúdos serão organizados por etapa de ensino, ano escolar, disciplina e aula.
+- **RN-005 — Hierarquia dos conteúdos:** os conteúdos são modelados por etapa de ensino, ano escolar, disciplina e aula. Cada ano pertence a uma etapa; disciplinas pertencem a um ano; aulas pertencem a uma disciplina.
 - **RN-006 — Acesso aos conteúdos:** o estudante terá acesso aos conteúdos publicados e disponibilizados na plataforma.
 - **RN-007 — Cadastro e edição:** o professor poderá cadastrar conteúdos e editar seus rascunhos, além de enviar sugestões de novas aulas e propostas de melhoria ou correção de aulas existentes.
 - **RN-008 — Avaliação de sugestões:** toda sugestão de novo conteúdo ou alteração de conteúdo compartilhado deverá ser avaliada pela equipe de desenvolvimento e manutenção da plataforma antes de ser publicada.

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import br.com.estuda.apoioestudos.usuario.entity.Usuario;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
@@ -19,6 +20,7 @@ import io.jsonwebtoken.security.Keys;
 public class JwtService {
 
     private final SecretKey chave;
+    private final JwtParser parser;
     private final Duration validade;
 
     public JwtService(
@@ -39,6 +41,7 @@ public class JwtService {
         }
 
         this.chave = Keys.hmacShaKeyFor(bytes);
+        this.parser = Jwts.parser().verifyWith(chave).build();
         this.validade = validade;
     }
 
@@ -64,11 +67,7 @@ public class JwtService {
     }
 
     public Claims validarToken(String token) {
-        return Jwts.parser()
-            .verifyWith(chave)
-            .build()
-            .parseSignedClaims(token)
-            .getPayload();
+        return parser.parseSignedClaims(token).getPayload();
     }
 
     public long getValidadeEmSegundos() {
