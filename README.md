@@ -4,13 +4,15 @@ O **Estuda** é uma plataforma web de apoio ao ensino e à aprendizagem. Este re
 
 A plataforma organiza conteúdos e atividades por etapa de ensino, ano escolar, disciplina e aula. O estudante poderá estudar os materiais, responder questões, acompanhar seu desempenho e acessar atividades de preparação para o ENEM. Professores com perfil validado poderão contribuir com conteúdos, sujeitos à revisão da equipe responsável.
 
-> **Estado do projeto:** o backend está em desenvolvimento. As regras de negócio documentam o comportamento esperado da plataforma, mas nem todas as funcionalidades já estão implementadas. Atualmente, a API disponibiliza um endpoint básico de status e a configuração inicial de conexão com o banco de dados.
+> **Estado do projeto:** o backend está em desenvolvimento. A API possui cadastro e autenticação por token Bearer, persistência de contas/perfis e autorização baseada no perfil. As demais funcionalidades de ensino ainda serão implementadas.
 
 ## Tecnologias
 
 - **Java 21** — linguagem de programação.
 - **Spring Boot 4.1.2** — estrutura principal da aplicação.
 - **Spring Web MVC** — criação dos endpoints REST.
+- **Spring Security** — autenticação stateless e autorização.
+- **JJWT** — assinatura e validação de tokens JWT.
 - **Spring Data JPA / Hibernate** — integração e mapeamento de persistência.
 - **PostgreSQL** — único SGBD utilizado pela aplicação e pelos testes automatizados.
 - **Flyway** — controle de versões e execução de alterações no banco (migrations).
@@ -29,7 +31,7 @@ O Maven não precisa ser instalado separadamente, pois o repositório possui Mav
 
 ## Como configurar o banco de dados
 
-A aplicação e os testes utilizam exclusivamente PostgreSQL, por meio do perfil `local`. O banco padrão é `estuda`.
+A aplicação e os testes utilizam exclusivamente PostgreSQL. A aplicação usa o perfil `local`; os testes usam o perfil `test`. Ambos usam as mesmas variáveis de conexão e, por padrão, o banco `estuda`.
 
 ### 1. Iniciar o PostgreSQL
 
@@ -60,7 +62,7 @@ Também é possível executar o comando abaixo pelo Query Tool do pgAdmin ou pel
 CREATE DATABASE estuda;
 ```
 
-**Não é necessário criar tabelas manualmente.** Ao iniciar a aplicação, o Flyway executa as migrations localizadas em `src/main/resources/db/migration`. A migration inicial cria a tabela `tb_teste_conexao`, usada para validar o controle de versão do banco. O Hibernate está configurado para validar o mapeamento, não para atualizar a estrutura automaticamente.
+**Não é necessário criar tabelas manualmente.** Ao iniciar a aplicação, o Flyway executa as migrations localizadas em `src/main/resources/db/migration`. A migration `V1` cria a tabela `tb_teste_conexao`; a `V2` cria `tb_usuario` e `tb_perfil_usuario`; e a `V3` cria o catálogo (`tb_etapa_ensino`, `tb_ano_escolar`, `tb_disciplina`, `tb_aula` e `tb_material_didatico`). O Hibernate está configurado para validar o mapeamento, não para atualizar a estrutura automaticamente.
 
 ### 3. Configurar a senha do PostgreSQL
 
@@ -90,6 +92,26 @@ $env:DB_URL = "jdbc:postgresql://localhost:5432/estuda"
 ```
 
 A variável `DB_PASSWORD` precisa ser definida novamente quando um novo terminal do PowerShell for aberto, a menos que tenha sido configurada permanentemente no sistema.
+
+### Configurar a chave dos tokens
+
+A aplicação assina os tokens JWT com a variável de ambiente `JWT_SECRET`. Configure uma chave aleatória com pelo menos 32 caracteres/bytes antes de iniciar a API. Não reutilize a chave de testes nem publique essa chave no repositório.
+
+**Windows — PowerShell:**
+
+```powershell
+$bytes = New-Object byte[] 48
+[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$env:JWT_SECRET = [Convert]::ToBase64String($bytes)
+```
+
+**Linux ou macOS — terminal:**
+
+```bash
+export JWT_SECRET="$(openssl rand -base64 48)"
+```
+
+Os tokens expiram após uma hora. Para alterar esse período, configure `app.jwt.expiration` com uma duração ISO-8601, por exemplo `PT30M`.
 
 ## Como executar a aplicação
 
@@ -133,6 +155,47 @@ Resposta esperada:
 
 O endereço `http://localhost:8080/` pode retornar erro 404 porque não existe uma rota configurada para a raiz `/`. Para verificar a API, utilize o endpoint `/api/v1/status`.
 
+## Cadastro, autenticação e permissões
+
+Todas as rotas abaixo usam JSON. O cadastro retorna `201 Created` e já fornece um token Bearer; o login retorna `200 OK`. Os perfis aceitos são `ESTUDANTE` e `PROFESSOR`.
+
+### Cadastrar estudante
+
+```http
+POST /api/v1/auth/cadastro
+Content-Type: application/json
+
+{
+  "nome": "Ana Estudante",
+  "email": "ana@example.com",
+  "senha": "senha-segura-123",
+  "tipoPerfil": "ESTUDANTE"
+}
+```
+
+Para cadastrar um professor, envie `"tipoPerfil": "PROFESSOR"`. Professores iniciam com status `PENDENTE`; durante esse período recebem somente a permissão `ROLE_ESTUDANTE`, podendo usar a área de estudante, mas não funcionalidades protegidas com `ROLE_PROFESSOR`. A permissão de professor é concedida somente após a validação do perfil. O status é incluído no token no momento do login/cadastro, então o usuário deverá autenticar novamente para obter permissões atualizadas após uma validação.
+
+### Autenticar
+
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "ana@example.com",
+  "senha": "senha-segura-123"
+}
+```
+
+A resposta contém `token`, `tipoToken` (`Bearer`) e `expiraEmSegundos`. Envie o token nas rotas autenticadas:
+
+```http
+GET /api/v1/auth/me
+Authorization: Bearer <token>
+```
+
+`/api/v1/auth/me` retorna a identidade e as permissões efetivas do usuário autenticado. O endpoint `/api/v1/status`, cadastro e login são públicos; as demais rotas exigem autenticação. Rotas sob `/api/v1/professores/**` exigem perfil de professor validado; rotas sob `/api/v1/estudantes/**` exigem permissão de estudante. Para autorização por método, utilize também `@PreAuthorize("hasRole('PROFESSOR')")` ou `@PreAuthorize("hasRole('ESTUDANTE')")`. Senhas são armazenadas com BCrypt e nunca retornadas pela API. E-mails duplicados retornam `409 Conflict`, credenciais incorretas `401 Unauthorized` e dados inválidos `400 Bad Request`.
+
 ### Encerrar a aplicação
 
 No terminal em que o Spring Boot está sendo executado, pressione **Ctrl + C**. Isso encerra a aplicação, mas não desliga o servidor PostgreSQL. Os dados armazenados no PostgreSQL permanecem salvos.
@@ -141,7 +204,7 @@ Para iniciar novamente, execute o comando `spring-boot:run` indicado acima.
 
 ## Testes e build
 
-Os testes automatizados também utilizam PostgreSQL, com o mesmo perfil `local` e as mesmas variáveis de conexão da aplicação. Antes de executá-los, mantenha o serviço PostgreSQL ligado, o banco `estuda` criado e `DB_PASSWORD` configurada no terminal.
+Os testes automatizados utilizam PostgreSQL com o perfil `test`. Antes de executá-los, mantenha o serviço PostgreSQL ligado, o banco `estuda` criado e `DB_PASSWORD` configurada no terminal.
 
 **Windows — PowerShell:**
 
@@ -167,13 +230,13 @@ O teste `DatabaseConnectionTest` verifica se a conexão está ativa e confirma q
 
 ## Como o backend está organizado
 
-O backend está sendo organizado em camadas, separando as responsabilidades do código. Atualmente, o endpoint de status está dividido entre os pacotes `controllers`, `services` e `dtos`. Conforme os módulos de negócio e a persistência forem implementados, a estrutura será ampliada com repositories, entities, configurações e tratamento de exceções.
+O backend está sendo organizado em módulos e camadas. O endpoint de status está dividido entre os pacotes `controllers`, `services` e `dtos`. O módulo `usuario` contém cadastro/autenticação, entidades, repositório, services e DTOs. O módulo `conteudo` contém o modelo de domínio e persistência do catálogo educacional: etapa de ensino → ano escolar → disciplina → aula → materiais didáticos. Nesta etapa, o catálogo ainda não possui endpoints HTTP de gerenciamento.
 
 O fluxo previsto para operações que acessam dados é: **requisição HTTP → Controller → Service → Repository → banco de dados**. A organização detalhada dos pacotes, as responsabilidades e as convenções de desenvolvimento estão descritas em [`ArqCamadas.md`](ArqCamadas.md).
 
 ## Regras de negócio
 
-As regras abaixo representam o comportamento definido para a plataforma. Elas devem orientar a implementação do backend e dos testes. A presença de uma regra nesta documentação não significa que a funcionalidade já esteja disponível.
+As regras abaixo representam o comportamento definido para a plataforma. Elas devem orientar a implementação do backend e dos testes. O modelo, a persistência e as operações de cadastro/autenticação das regras RN-001, RN-002 e RN-004 estão implementados. A estrutura hierárquica de catálogo da RN-005 também está implementada; a validação administrativa de professores, publicação e gerenciamento de conteúdos e as funcionalidades das demais regras ainda serão implementadas.
 
 ### Usuários, perfis e permissões
 
@@ -184,7 +247,7 @@ As regras abaixo representam o comportamento definido para a plataforma. Elas de
 
 ### Conteúdos didáticos e contribuição dos professores
 
-- **RN-005 — Hierarquia dos conteúdos:** os conteúdos serão organizados por etapa de ensino, ano escolar, disciplina e aula.
+- **RN-005 — Hierarquia dos conteúdos:** os conteúdos são modelados por etapa de ensino, ano escolar, disciplina e aula. Cada ano pertence a uma etapa; disciplinas pertencem a um ano; aulas pertencem a uma disciplina.
 - **RN-006 — Acesso aos conteúdos:** o estudante terá acesso aos conteúdos publicados e disponibilizados na plataforma.
 - **RN-007 — Cadastro e edição:** o professor poderá cadastrar conteúdos e editar seus rascunhos, além de enviar sugestões de novas aulas e propostas de melhoria ou correção de aulas existentes.
 - **RN-008 — Avaliação de sugestões:** toda sugestão de novo conteúdo ou alteração de conteúdo compartilhado deverá ser avaliada pela equipe de desenvolvimento e manutenção da plataforma antes de ser publicada.
